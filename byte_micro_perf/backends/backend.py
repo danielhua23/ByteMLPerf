@@ -26,12 +26,12 @@ USE_ROCM=1
 if USE_ROCM:
     import torch.profiler as tprof 
     import torch 
-    
+
 schedule = tprof.schedule(
     wait=5,      # Skip the first 5 iterations
     warmup=5,    # Warmup the next 5 iterations (optional)
-    active=5,    # Profile the next 5 iterations
-    repeat=10    # Total period is 15 steps (5 + 5 + 5), then repeat
+    active=10,    # Profile the next 5 iterations
+    repeat=1    # Total period is 15 steps (5 + 5 + 5), then repeat
 )    
 
 from .utils import get_dtype_bytes
@@ -278,6 +278,7 @@ class Backend(ABC):
                     ) as profiler:
                         for i in range(prefer_iterations):
                             self._run_operation(self.op, tensor_list[i % tensor_cnt])
+                            profiler.step() 
                         self.device_synchronize()
 
                 end_time = time.perf_counter_ns()
