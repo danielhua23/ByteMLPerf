@@ -19,16 +19,9 @@ from typing import List
 import torch
 import torch.distributed as dist
 
-USE_CUDA=0
-USE_ROCM=1 
-if USE_CUDA:
+USE_NVTX=0
+if USE_NVTX:
     import torch.cuda.nvtx as nvtx 
-if USE_ROCM:
-    import torch.profiler as tprof 
-
-
-from .utils import get_dtype_bytes
-
 
 class GemmOp(torch.nn.Module):
     def __init__(self, *args, **kwargs) -> None:
@@ -510,19 +503,10 @@ class SortOp(torch.nn.Module):
         super().__init__()
 
     def forward(self, input_tensors):
-        if USE_CUDA:
+        if USE_NVTX:
             nvtx.range_push("sort_op")
             result = torch.sort(input_tensors)
             nvtx.range_pop()
-        elif USE_ROCM:
-            with tprof.profile(
-                activities=[
-                    torch.profiler.ProfilerActivity.CPU,
-                    torch.profiler.ProfilerActivity.CUDA,
-                ],
-                on_trace_ready=torch.profiler.tensorboard_trace_handler("./tprof_log/"), 
-            ) as profiler:
-                result = torch.sort(input_tensors)
         else:
             result = torch.sort(input_tensors)
         return result

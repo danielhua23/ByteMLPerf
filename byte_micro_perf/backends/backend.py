@@ -21,6 +21,21 @@ from typing import Any, Dict, List
 
 from backends.utils import dump_communication_ops_report, dump_computation_ops_report
 
+# profile for rocm 
+USE_ROCM=1
+if USE_ROCM:
+    import torch.profiler as tprof 
+    import torch 
+    
+schedule = tprof.schedule(
+    wait=5,      # Skip the first 5 iterations
+    warmup=5,    # Warmup the next 5 iterations (optional)
+    active=5,    # Profile the next 5 iterations
+    repeat=10    # Total period is 15 steps (5 + 5 + 5), then repeat
+)    
+
+from .utils import get_dtype_bytes
+
 class Backend(ABC):
     def __init__(self, workload_dict: Dict[str, Any], vendor_path: str):
         self.op_name = workload_dict["operator"]
@@ -251,9 +266,20 @@ class Backend(ABC):
                 # perf
                 self.device_synchronize()
                 start_time = time.perf_counter_ns()
-                for i in range(prefer_iterations):
-                    self._run_operation(self.op, tensor_list[i % tensor_cnt])
-                self.device_synchronize()
+                if USE_ROCM:
+                    with tprof.profile(
+                        activities=[
+                            torch.profiler.ProfilerActivity.CPU,
+                            torch.profiler.ProfilerActivity.CUDA,
+                        ],
+                        with_stack=True,
+                        schedule=schedule, 
+                        on_trace_ready=torch.profiler.tensorboard_trace_handler("./tprof_log/"), 
+                    ) as profiler:
+                        for i in range(prefer_iterations):
+                            self._run_operation(self.op, tensor_list[i % tensor_cnt])
+                        self.device_synchronize()
+
                 end_time = time.perf_counter_ns()
 
                 # time in us
