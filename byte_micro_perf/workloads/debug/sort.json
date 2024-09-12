@@ -1,0 +1,15 @@
+{
+  "operator": "sort",
+  "iterations": 100,
+  "input_shape_groups": {
+    "inputs": [
+      [
+        [1024],
+        [8192]
+      ]
+    ]
+  },
+  "dtype": [
+    "float32"
+  ]
+}
