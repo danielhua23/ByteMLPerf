@@ -20,9 +20,13 @@ import logging
 import subprocess
 import signal
 
+# directory config
 CUR_DIR = pathlib.Path.cwd().absolute()
-BYTE_MLPERF_ROOT = pathlib.Path(__file__).parent.absolute()
-sys.path.insert(0, BYTE_MLPERF_ROOT)
+FILE_DIR = pathlib.Path(__file__).parent.absolute()
+BYTE_MLPERF_ROOT = FILE_DIR
+sys.path.insert(0, str(BYTE_MLPERF_ROOT))
+
+# logger config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("lanuch")
 
@@ -78,6 +82,11 @@ if __name__ == "__main__":
 
     # feature control
     parser.add_argument(
+        "--parallel", 
+        type=int, default=1, 
+        help="Run all tasks in parallel if available"
+    )
+    parser.add_argument(
         "--install_requirements", action="store_true", 
         help="Install all required packages"
     )
@@ -103,14 +112,14 @@ if __name__ == "__main__":
         "binary_ops": [], 
         "reduction_ops": [], 
         "index_ops": [], 
-        "ccl_ops": [], 
-        "h2d_ops": []
+        "h2d_ops": [], 
+        "ccl_ops": []
     }
     for task in task_list:
         if task in ["gemm", "gemv", "batch_gemm", "group_gemm"]:
             task_mapping["gemm_ops"].append(task)
 
-        if task in ["sin", "cos", "exp", "exponential", "silu", "gelu", "swiglu", "cast"]:
+        if task in ["sin", "cos", "exp", "exponential", "log", "sqrt", "cast", "silu", "gelu", "swiglu"]:
             task_mapping["unary_ops"].append(task)
 
         if task in ["add", "mul", "sub", "div"]:
@@ -122,12 +131,12 @@ if __name__ == "__main__":
         if task in ["index_add", "sort", "unique", "gather", "scatter"]:
             task_mapping["index_ops"].append(task)
 
-        if task in ["allgather", "allreduce", "alltoall", "broadcast", "p2p", "reduce_scatter"]:
-            task_mapping["ccl_ops"].append(task)
-        
         if task in ["host2device", "device2host", "device2device"]:
             task_mapping["h2d_ops"].append(task)
-    
+
+        if task in ["allgather", "allreduce", "alltoall", "broadcast", "p2p", "reduce_scatter"]:
+            task_mapping["ccl_ops"].append(task)
+
 
     if args.show_task_list:
         logger.info("******************* Supported Task *******************")
@@ -172,17 +181,14 @@ if __name__ == "__main__":
     if args.install_requirements:
         logger.info("******************* Pip Package Installing *******************")
         subprocess.run(
-            "python3 -m pip install --upgrade pip --quiet", 
-            shell=True
+            ["python3", "-m", "pip", "install", "pip", "--upgrade", "--quiet"]
         )
         subprocess.run(
-            "python3 -m pip install -r requirements.txt --quiet", 
-            shell=True
+            ["python3", "-m", "pip", "install", "-r", "requirements.txt", "--quiet"]
         )
-        if not args.activate_venv and BYTE_MLPERF_ROOT.joinpath("backends", args.hardware_type, "requirements.txt").exists():
+        if not args.activate_venv:
             subprocess.run(
-                f"python3 -m pip install -r backends/{args.hardware_type}/requirements.txt --quiet",
-                shell=True
+                ["python3", "-m", "pip", "install", "-r", f"backends/{hardware}/requirements.txt", "--quiet"]
             )
 
 
@@ -211,27 +217,25 @@ if __name__ == "__main__":
         cmds = [
             "python3", 
             "./core/perf_engine.py", 
-            "--hardware_type", 
-            args.hardware_type,
-            "--task",
-            task,
-            "--vendor_path",
-            str(args.vendor_path),
-            "--task_dir",
-            str(args.task_dir)
+            "--hardware_type", args.hardware_type,
+            "--vendor_path", str(args.vendor_path),
+            "--task", task,
+            "--task_dir", str(args.task_dir), 
+            "--parallel", str(args.parallel)
         ]
         if args.activate_venv:
             cmds.append("--activate_venv")
 
+        print(f"******************************************* Start to test op: [{task}]. *******************************************")
         process = subprocess.Popen(cmds)
         subprocess_pid = process.pid
-        logger.info(f"start subprocess: {subprocess_pid}")
 
         ret = process.wait()
         if ret != 0:
             failed_ops.append(task)
-        
-        subprocess_pid = -1
+        print("")
+
+
     
     if failed_ops:
         logger.error(f"Failed ops: {failed_ops}")
