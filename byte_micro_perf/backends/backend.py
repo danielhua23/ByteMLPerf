@@ -277,7 +277,8 @@ class Backend(ABC):
                         on_trace_ready=torch.profiler.tensorboard_trace_handler("./tprof_log/"), 
                     ) as profiler:
                         for i in range(prefer_iterations):
-                            self._run_operation(self.op, tensor_list[i % tensor_cnt])
+                            with tprof.record_function("sort_op"):
+                                self._run_operation(self.op, tensor_list[i % tensor_cnt])
                             profiler.step() 
                         self.device_synchronize()
 
