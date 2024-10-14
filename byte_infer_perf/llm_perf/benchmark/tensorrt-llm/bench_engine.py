@@ -55,7 +55,7 @@ def parse_args():
         logger.error("trtllm_dir is None, please set trtllm_dir or set TRTLLM_PATH in env")
         sys.exit(-1)
     trtllm_dir = pathlib.Path(args.trtllm_dir) if args.trtllm_dir is not None else pathlib.Path(os.getenv("TRTLLM_PATH")).absolute()
-    benchmark_build_dir = trtllm_dir.joinpath("cpp", "build", "benchmarks")
+    benchmark_build_dir = trtllm_dir.joinpath("benchmarks", "cpp")      # benchmark_build_dir = trtllm_dir.joinpath("cpp", "build", "benchmarks")
     session_benchmark = benchmark_build_dir.joinpath("gptSessionBenchmark")
     manager_benchmark = benchmark_build_dir.joinpath("gptManagerBenchmark")
     if not benchmark_build_dir.exists() or not session_benchmark.exists() or not manager_benchmark.exists():
@@ -212,11 +212,11 @@ def decode_perf(workspace, manager_benchmark, prepare_dataset_script, engine_dir
             run_cmd += f" --max_num_tokens {min(int(seq_len * 1.5), int(max_num_tokens))}"
             run_cmd += f" --max_num_samples {batch_size}"
             run_cmd += f" --static_emulated_batch_size {batch_size}"
-            run_cmd += f" --enable_kv_cache_reuse false"
+            # run_cmd += f" --enable_kv_cache_reuse false"
             run_cmd += f" --dataset {context_dataset}"
             run_cmd += f" --output_csv {context_csv}"
-            subprocess.run(run_cmd, shell=True, capture_output=True, text=True)
-
+            context_status = subprocess.run(run_cmd, shell=True, capture_output=True, check=True, text=True)
+            print(context_status )
             # decode
             run_cmd = f"mpirun --allow-run-as-root -n 8 {manager_benchmark}"
             run_cmd += f" --engine_dir {engine_dir}"
@@ -224,10 +224,11 @@ def decode_perf(workspace, manager_benchmark, prepare_dataset_script, engine_dir
             run_cmd += f" --max_num_tokens {min(int(seq_len * 1.5), int(max_num_tokens))}"
             run_cmd += f" --max_num_samples {batch_size}"
             run_cmd += f" --static_emulated_batch_size {batch_size}"
-            run_cmd += f" --enable_kv_cache_reuse false"
+            # run_cmd += f" --enable_kv_cache_reuse false"
             run_cmd += f" --dataset {decode_dataset}"
             run_cmd += f" --output_csv {decode_csv}"
-            subprocess.run(run_cmd, shell=True, capture_output=True, text=True)
+            decode_status = subprocess.run(run_cmd, shell=True, capture_output=True, check=True, text=True)
+            print(context_status )
 
             if context_csv.exists() and decode_csv.exists():
                 try:
@@ -237,11 +238,13 @@ def decode_perf(workspace, manager_benchmark, prepare_dataset_script, engine_dir
                     logger.error(f"parse context_csv: {context_csv} and decode_csv: {decode_csv} failed, error: {e}")
                     continue
 
-            per_token_latency = round((decode_latency - context_latency) / (decode_generate_tokens - context_generate_tokens), 3)
-            logger.info(f"decode, batch_size: {batch_size}, seq_len: {seq_len}, latency: {per_token_latency} ms")
+                per_token_latency = round((decode_latency - context_latency) / (decode_generate_tokens - context_generate_tokens), 3)
+                logger.info(f"decode, batch_size: {batch_size}, seq_len: {seq_len}, latency: {per_token_latency} ms")
+            else:
+                print("mpirun not done yet")
 
-        break  
-
+        #break
+        
 
 if __name__ == "__main__":
     workspace, session_benchmark, manager_benchmark, prepare_dataset_script, engine_dir, model_dir, batch_size_list, seq_len_list = parse_args()
@@ -252,5 +255,5 @@ if __name__ == "__main__":
     logger.info(f"batch_size_list: {batch_size_list}")
     logger.info(f"seq_len_list: {seq_len_list}")
 
-    context_perf(session_benchmark, engine_dir, seq_len_list)
+    # context_perf(session_benchmark, engine_dir, seq_len_list)
     decode_perf(workspace, manager_benchmark, prepare_dataset_script, engine_dir, model_dir, batch_size_list, seq_len_list)
