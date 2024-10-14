@@ -47,4 +47,29 @@ python3 bench_engine.py \
 
 
 
+## build trtllm:0.13.0 image (Oct-14)
+
+notice: directly pip wheel install will miss `cpp/bench` binaries, the following is required to compile `cpp/bench` in docker first. 
+
+```sh
+# 1. build trtllm:0.13.0 image in official way 
+
+git clone -b v0.13.0 --recursive  https://github.com/NVIDIA/TensorRT-LLM.git
+
+cd TensorRT-LLM 
+# on H20
+make -C docker release_build CUDA_ARCH="90-real"
+# commit as tensorrt_llm/release:0.13.0 
+
+# build c++ runtime benchmark 
+docker run --gpus all --rm -it  -v /scratch/david/TensorRT-LLM:/workspace/TensorRT-LLM tensorrt_llm/release:0.13.0 
+cd /workspace/TensorRT-LLM/ 
+python3 ./scripts/build_wheel.py --clean --benchmarks --trt_root /usr/local/tensorrt --build_type "Release"
+pip install ./build/tensorrt_llm*.whl
+apt-get autoclean
+pip cache purge
+# commit as tensorrt_llm/release:0.13.0 
+
+```
+
 
