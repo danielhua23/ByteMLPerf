@@ -8,7 +8,7 @@ Follwing envs have been tested:
 - TensorRT: 10.4.0.26
 
 ## How to run
-### launch docker container
+### 0.Check docker images on your machine
 you can check the "tensorrt_llm/release:v0.13.0" image is availiable or not by ```docker images```, if it is, you can skip the 1st step, or you must execute the below cmd first.
 ### 1.How to build trtllm:0.13.0 image (Oct-17)
 
