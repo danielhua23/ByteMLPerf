@@ -176,7 +176,7 @@ def decode_perf(workspace, manager_benchmark, prepare_dataset_script, engine_dir
         seq_workspace.mkdir(parents=True, exist_ok=True)
 
         context_generate_tokens = 1
-        decode_generate_tokens = 101
+        decode_generate_tokens = 128
 
         context_dataset = seq_workspace.joinpath(f"context_{seq_len}_{context_generate_tokens}.json")
         decode_dataset = seq_workspace.joinpath(f"decode_{seq_len}_{decode_generate_tokens}.json")
@@ -202,8 +202,8 @@ def decode_perf(workspace, manager_benchmark, prepare_dataset_script, engine_dir
                 logger.warning(f"batch_size: {batch_size} > max_batch_size: {max_batch_size}, skip")
                 continue
 
-            context_csv = seq_workspace.joinpath(f"context_batch{batch_size}.csv")
-            decode_csv = seq_workspace.joinpath(f"decode_batch{batch_size}.csv")
+            context_csv = seq_workspace.joinpath(f"perf_context_batch{batch_size}_{seq_len}.csv")
+            decode_csv = seq_workspace.joinpath(f"perf_decode_batch{batch_size}_{seq_len}_{decode_generate_tokens}.csv")
 
             # context
             run_cmd = f"mpirun --allow-run-as-root -n 8 {manager_benchmark}"
