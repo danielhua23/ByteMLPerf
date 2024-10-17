@@ -4,7 +4,7 @@ python3 /app/tensorrt_llm/examples/llama/convert_checkpoint.py \
     --output_dir ./tllm_ckpt_mixtral_tp8 \
     --dtype float16 \
     --tp_size 8
-batchsize="23000 30000"
+batchsize="5000 9000 16000 23000 30000"
 for bs in $batchsize;do
     # build engine
     trtllm-build \
